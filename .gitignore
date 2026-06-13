@@ -1,18 +1,28 @@
-# Ignore environment variables
+# Git ignore for taiwan_stock_monopoly
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment
 .env
 
-# Logs and temporary files
-data/logs/
-*.log
+# Worktrees (project‑local)
+.worktrees/
+worktrees/
 
 # Build artefacts
-*.pyc
-__pycache__/
+dist/
+build/
 
-# Generated documentation & schema files
-src/system_design_doc.md
-src/init_schema.sql
-
-# IDE / editor configs
+# VSCode
 .vscode/
-.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

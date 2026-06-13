@@ -1,0 +1,329 @@
+```yaml
+openapi: 3.0.3
+info:
+  title: FinTech Gaming Platform API
+  version: 1.0.0
+  description: |
+    REST API for market data, portfolio management, trading, and event triggering
+    in the FinTech Gaming Platform. All endpoints require Bearer JWT authentication
+    unless otherwise noted.
+servers:
+  - url: https://api.fintechgame.com/v1
+    description: Production server
+  - url: https://staging.api.fintechgame.com/v1
+    description: Staging server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+    MarketInfo:
+      type: object
+      description: Basic market information for an asset.
+      properties:
+        symbol:
+          type: string
+          example: AAPL
+        name:
+          type: string
+          example: Apple Inc.
+        type:
+          type: string
+          enum: [stock, crypto, in-game]
+        sector:
+          type: string
+          example: Technology
+        last_price:
+          type: number
+          format: double
+          example: 172.34
+        last_update:
+          type: string
+          format: date-time
+          example: "2026-06-12T14:23:00Z"
+    Candle:
+      type: object
+      description: OHLCV candle.
+      properties:
+        ts:
+          type: string
+          format: date-time
+          example: "2026-06-12T14:00:00Z"
+        open:
+          type: number
+          format: double
+        high:
+          type: number
+          format: double
+        low:
+          type: number
+          format: double
+        close:
+          type: number
+          format: double
+        volume:
+          type: number
+          format: double
+    StockDetail:
+      type: object
+      description: Detailed information for a single stock/crypto asset.
+      allOf:
+        - $ref: '#/components/schemas/MarketInfo'
+        - type: object
+          properties:
+            candles:
+              type: array
+              items:
+                $ref: '#/components/schemas/Candle'
+    TradeRequest:
+      type: object
+      required:
+        - symbol
+        - side
+        - quantity
+        - type
+      properties:
+        symbol:
+          type: string
+          example: AAPL
+        side:
+          type: string
+          enum: [buy, sell]
+        quantity:
+          type: number
+          format: double
+          example: 10
+        type:
+          type: string
+          enum: [market, limit]
+          description: Order type.
+        price:
+          type: number
+          format: double
+          description: Required when type is limit.
+          example: 173.00
+    TradeResponse:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        status:
+          type: string
+          enum: [accepted, rejected, pending]
+        message:
+          type: string
+          example: "Order accepted"
+    PortfolioPosition:
+      type: object
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        symbol:
+          type: string
+          example: AAPL
+        quantity:
+          type: number
+          format: double
+        avg_price:
+          type: number
+          format: double
+        last_price:
+          type: number
+          format: double
+        market_value:
+          type: number
+          format: double
+    PortfolioResponse:
+      type: object
+      properties:
+        portfolio_id:
+          type: string
+          format: uuid
+        base_currency:
+          type: string
+          example: USD
+        cash_balance:
+          type: number
+          format: double
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioPosition'
+    EventTriggerRequest:
+      type: object
+      description: Generic event trigger used by the game logic service.
+      required:
+        - event_type
+        - payload
+      properties:
+        event_type:
+          type: string
+          enum: [trade_executed, quest_completed, reward_granted]
+        payload:
+          type: object
+          description: Arbitrary JSON payload specific to the event_type.
+    EventTriggerResponse:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Event queued"
+security:
+  - BearerAuth: []
+paths:
+  /market:
+    get:
+      summary: List market assets (summary)
+      operationId: listMarketAssets
+      parameters:
+        - name: type
+          in: query
+          description: Filter by asset type
+          required: false
+          schema:
+            type: string
+            enum: [stock, crypto, in-game]
+        - name: search
+          in: query
+          description: Text search on symbol or name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of market assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /stock/{symbol}:
+    get:
+      summary: Get historical candle data for a symbol
+      operationId: getStockCandles
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1m,5m,15m,1h,1d]
+            default: 1m
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 500
+            minimum: 1
+            maximum: 5000
+      responses:
+        '200':
+          description: Candle array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Candle'
+        '404':
+          description: Symbol not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /trade:
+    post:
+      summary: Submit a new trade order
+      operationId: createTrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeRequest'
+      responses:
+        '201':
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio:
+    get:
+      summary: Retrieve the authenticated user's portfolio
+      operationId: getPortfolio
+      responses:
+        '200':
+          description: Portfolio details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /event/trigger:
+    post:
+      summary: Generic event trigger endpoint for game logic
+      operationId: triggerEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTriggerRequest'
+      responses:
+        '202':
+          description: Event queued for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTriggerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  responses:
+    BadRequest:
+      description: Bad request – validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required or token invalid/expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+```

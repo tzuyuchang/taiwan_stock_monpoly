@@ -1,0 +1,443 @@
+**src/ui/Theme.css**
+```css
+/* Theme.css – FinTech Gaming Platform UI theme */
+
+/* Base colors */
+:root {
+  --color-primary-blue: #1e3a8a;   /* Dark indigo for primary actions */
+  --color-primary-red: #b91c1c;    /* Dark red for sell actions */
+  --color-primary-gold: #d4af37;   /* Gold for premium/achievement highlights */
+  --color-bg-light: #f5f7fa;       /* Light background */
+  --color-bg-dark: #111827;        /* Dark background for dark mode (optional) */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-success: #16a34a;        /* Green for success messages */
+  --color-error: #dc2626;          /* Red for error messages */
+}
+
+/* Global resets */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--color-bg-light);
+  color: var(--color-text-primary);
+}
+
+/* Utility classes */
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 1rem; }
+
+.rounded {
+  border-radius: 0.5rem;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.button-primary {
+  background-color: var(--color-primary-blue);
+  color: #fff;
+}
+
+.button-danger {
+  background-color: var(--color-primary-red);
+  color: #fff;
+}
+
+.button-gold {
+  background-color: var(--color-primary-gold);
+  color: #fff;
+}
+
+/* Specific component styles will be imported in each component file */
+```
+
+---
+
+**src/ui/HomeScreen.jsx**
+```jsx
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import './Theme.css';
+
+const dummyRanking = [
+  { rank: 1, username: 'TraderJoe', profit: 12450 },
+  { rank: 2, username: 'CryptoCat', profit: 10820 },
+  { rank: 3, username: 'BullBoss', profit: 9850 },
+];
+
+export default function HomeScreen({ navigation }) {
+  const renderItem = ({ item }) => (
+    <View style={styles.rankingRow}>
+      <Text style={styles.rank}>#{item.rank}</Text>
+      <Text style={styles.username}>{item.username}</Text>
+      <Text style={styles.profit}>${item.profit.toLocaleString()}</Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Leaderboard</Text>
+      <FlatList
+        data={dummyRanking}
+        keyExtractor={(item) => item.rank.toString()}
+        renderItem={renderItem}
+        style={styles.list}
+      />
+      <TouchableOpacity
+        style={[styles.button, styles.startButton]}
+        onPress={() => navigation.navigate('Market')}
+      >
+        <Text style={styles.buttonText}>Start Trading</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'var(--color-bg-light)',
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'var(--color-primary-blue)',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  list: {
+    flexGrow: 0,
+    marginBottom: 24,
+  },
+  rankingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: 'var(--color-border)',
+  },
+  rank: { fontWeight: '600', color: 'var(--color-text-primary)' },
+  username: { color: 'var(--color-text-secondary)' },
+  profit: { fontWeight: '600', color: 'var(--color-primary-blue)' },
+
+  button: {
+    ...StyleSheet.flatten({ ...globalStyles.button }),
+    alignSelf: 'center',
+    width: '80%',
+  },
+  startButton: {
+    backgroundColor: 'var(--color-primary-gold)',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+});
+```
+
+---
+
+**src/ui/MarketScreen.jsx**
+```jsx
+import React, { useState } from 'react';
+import { View, TextInput, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import './Theme.css';
+
+const dummyStocks = [
+  { symbol: 'AAPL', name: 'Apple Inc.', price: 172.34 },
+  { symbol: 'TSLA', name: 'Tesla, Inc.', price: 215.12 },
+  { symbol: 'BTCUSD', name: 'Bitcoin', price: 31745.6 },
+  // Add more as needed
+];
+
+export default function MarketScreen({ navigation }) {
+  const [search, setSearch] = useState('');
+  const filtered = dummyStocks.filter(
+    (s) => s.symbol.includes(search.toUpperCase()) || s.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.stockRow}
+      onPress={() => navigation.navigate('StockDetail', { symbol: item.symbol })}
+    >
+      <Text style={styles.symbol}>{item.symbol}</Text>
+      <Text style={styles.name}>{item.name}</Text>
+      <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Market</Text>
+      <TextInput
+        style={styles.search}
+        placeholder="Search stocks or crypto..."
+        value={search}
+        onChangeText={setSearch}
+      />
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.symbol}
+        renderItem={renderItem}
+        style={styles.list}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'var(--color-bg-light)',
+    padding: 16,
+  },
+  header: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'var(--color-primary-blue)',
+    marginBottom: 12,
+  },
+  search: {
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'var(--color-border)',
+    marginBottom: 12,
+  },
+  list: { flexGrow: 0 },
+  stockRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: 'var(--color-border)',
+  },
+  symbol: { fontWeight: '600', color: 'var(--color-primary-blue)' },
+  name: { color: 'var(--color-text-secondary)' },
+  price: { fontWeight: '600' },
+});
+```
+
+---
+
+**src/ui/StockDetail.jsx**
+```jsx
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import './Theme.css';
+
+// Placeholder for a candlestick chart component
+function CandlestickChart({ symbol }) {
+  return (
+    <View style={styles.chartPlaceholder}>
+      <Text style={{ color: 'var(--color-text-secondary)' }}>[Candlestick Chart for {symbol}]</Text>
+    </View>
+  );
+}
+
+export default function StockDetail({ route, navigation }) {
+  const { symbol } = route.params;
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>{symbol} Details</Text>
+      <CandlestickChart symbol={symbol} />
+
+      <View style={styles.buttonGroup}>
+        <TouchableOpacity style={[styles.button, styles.buyButton]} onPress={() => alert('Buy action')}>
+          <Text style={styles.buttonText}>Buy</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.sellButton]} onPress={() => alert('Sell action')}>
+          <Text style={styles.buttonText}>Sell</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'var(--color-bg-light)',
+    padding: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'var(--color-primary-blue)',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  chartPlaceholder: {
+    height: 250,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'var(--color-border)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+  },
+  button: {
+    flex: 0.45,
+    paddingVertical: 12,
+    borderRadius: 6,
+  },
+  buyButton: {
+    backgroundColor: 'var(--color-primary-blue)',
+  },
+  sellButton: {
+    backgroundColor: 'var(--color-primary-red)',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: 16,
+  },
+});
+```
+
+---
+
+**src/ui/PortfolioScreen.jsx**
+```jsx
+import React from 'react';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
+import './Theme.css';
+
+const dummyPortfolio = {
+  cash: 12450.75,
+  positions: [
+    { symbol: 'AAPL', qty: 30, avgPrice: 150.2, lastPrice: 172.34 },
+    { symbol: 'TSLA', qty: 10, avgPrice: 200.0, lastPrice: 215.12 },
+    { symbol: 'BTCUSD', qty: 0.5, avgPrice: 30000, lastPrice: 31745.6 },
+  ],
+};
+
+export default function PortfolioScreen() {
+  const totalValue = dummyPortfolio.positions.reduce(
+    (sum, p) => sum + p.qty * p.lastPrice,
+    dummyPortfolio.cash
+  );
+
+  const renderItem = ({ item }) => {
+    const marketValue = item.qty * item.lastPrice;
+    const profit = marketValue - item.qty * item.avgPrice;
+    return (
+      <View style={styles.positionRow}>
+        <Text style={styles.symbol}>{item.symbol}</Text>
+        <Text style={styles.qty}>x{item.qty}</Text>
+        <Text style={styles.value}>${marketValue.toFixed(2)}</Text>
+        <Text style={[styles.profit, profit >= 0 ? styles.profitPos : styles.profitNeg]}>
+          {profit >= 0 ? '+' : ''}{profit.toFixed(2)}
+        </Text>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Portfolio Overview</Text>
+      <Text style={styles.cash}>Cash Balance: ${dummyPortfolio.cash.toLocaleString()}</Text>
+      <FlatList
+        data={dummyPortfolio.positions}
+        keyExtractor={(item) => item.symbol}
+        renderItem={renderItem}
+        style={styles.list}
+      />
+      <Text style={styles.total}>Total Net Worth: ${totalValue.toLocaleString()}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'var(--color-bg-light)',
+    padding: 16,
+  },
+  header: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'var(--color-primary-blue)',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  cash: {
+    fontSize: 16,
+    marginBottom: 12,
+    color: 'var(--color-text-primary)',
+  },
+  list: { flexGrow: 0 },
+  positionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: 'var(--color-border)',
+  },
+  symbol: { fontWeight: '600', color: 'var(--color-primary-blue)' },
+  qty: { color: 'var(--color-text-secondary)' },
+  value: { fontWeight: '600' },
+  profit: { fontWeight: '600' },
+  profitPos: { color: 'var(--color-success)' },
+  profitNeg: { color: 'var(--color-error)' },
+  total: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: 'var(--color-primary-gold)',
+  },
+});
+```
+
+---
+
+**Explanation**
+
+- All components are written in **React‑Native JSX** and use **StyleSheet** for styling.
+- Global theme variables are defined in `Theme.css` and referenced via CSS custom properties (`var(--color-…)`) which works with React‑Native Web and Expo’s support for CSS.
+- Each screen follows the UI/UX spec:
+  - **HomeScreen** – shows a leaderboard ranking list and a “Start Trading” button.
+  - **MarketScreen** – searchable list of stocks/crypto with price preview.
+  - **StockDetail** – placeholder candlestick chart with **Buy** and **Sell** buttons (colored blue/red).
+  - **PortfolioScreen** – displays cash balance, positions, profit/loss, and total net worth.
+- The theme provides blue, red, and gold primary colors as required.
+
+All files are located under `src/ui/` as requested.
