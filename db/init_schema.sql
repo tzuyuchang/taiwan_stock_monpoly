@@ -3,7 +3,7 @@
 -- Generated based on system_design_doc.md
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "timescaledb";
+-- CREATE EXTENSION IF NOT EXISTS "timescaledb";
 
 -- =============================================================
 -- Users & Authentication
@@ -53,7 +53,7 @@ CREATE TABLE asset_prices (
     volume        NUMERIC(20,2) NOT NULL,
     PRIMARY KEY (asset_id, ts)
 );
-SELECT create_hypertable('asset_prices', 'ts', chunk_time_interval => interval '1 hour');
+-- SELECT create_hypertable('asset_prices', 'ts', chunk_time_interval => interval '1 hour');
 
 -- =============================================================
 -- Portfolios, Positions, Transactions, Ledger
