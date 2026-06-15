@@ -1,266 +1,104 @@
 ```yaml
 openapi: 3.0.3
 info:
-  title: FinTech Gaming Platform API
+  title: Trading Game API
   version: 1.0.0
   description: |
-    REST API for market data, portfolio management, trading, and event triggering
-    in the FinTech Gaming Platform. All endpoints require Bearer JWT authentication
-    unless otherwise noted.
+    API for market data, trading, portfolio management and event triggering
+    for the trading simulation game.
 servers:
-  - url: https://api.fintechgame.com/v1
+  - url: https://api.example.com/v1
     description: Production server
-  - url: https://staging.api.fintechgame.com/v1
-    description: Staging server
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-  schemas:
-    ErrorResponse:
-      type: object
-      properties:
-        code:
-          type: integer
-          format: int32
-        message:
-          type: string
-    MarketInfo:
-      type: object
-      description: Basic market information for an asset.
-      properties:
-        symbol:
-          type: string
-          example: AAPL
-        name:
-          type: string
-          example: Apple Inc.
-        type:
-          type: string
-          enum: [stock, crypto, in-game]
-        sector:
-          type: string
-          example: Technology
-        last_price:
-          type: number
-          format: double
-          example: 172.34
-        last_update:
-          type: string
-          format: date-time
-          example: "2026-06-12T14:23:00Z"
-    Candle:
-      type: object
-      description: OHLCV candle.
-      properties:
-        ts:
-          type: string
-          format: date-time
-          example: "2026-06-12T14:00:00Z"
-        open:
-          type: number
-          format: double
-        high:
-          type: number
-          format: double
-        low:
-          type: number
-          format: double
-        close:
-          type: number
-          format: double
-        volume:
-          type: number
-          format: double
-    StockDetail:
-      type: object
-      description: Detailed information for a single stock/crypto asset.
-      allOf:
-        - $ref: '#/components/schemas/MarketInfo'
-        - type: object
-          properties:
-            candles:
-              type: array
-              items:
-                $ref: '#/components/schemas/Candle'
-    TradeRequest:
-      type: object
-      required:
-        - symbol
-        - side
-        - quantity
-        - type
-      properties:
-        symbol:
-          type: string
-          example: AAPL
-        side:
-          type: string
-          enum: [buy, sell]
-        quantity:
-          type: number
-          format: double
-          example: 10
-        type:
-          type: string
-          enum: [market, limit]
-          description: Order type.
-        price:
-          type: number
-          format: double
-          description: Required when type is limit.
-          example: 173.00
-    TradeResponse:
-      type: object
-      properties:
-        order_id:
-          type: string
-          format: uuid
-          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-        status:
-          type: string
-          enum: [accepted, rejected, pending]
-        message:
-          type: string
-          example: "Order accepted"
-    PortfolioPosition:
-      type: object
-      properties:
-        asset_id:
-          type: string
-          format: uuid
-        symbol:
-          type: string
-          example: AAPL
-        quantity:
-          type: number
-          format: double
-        avg_price:
-          type: number
-          format: double
-        last_price:
-          type: number
-          format: double
-        market_value:
-          type: number
-          format: double
-    PortfolioResponse:
-      type: object
-      properties:
-        portfolio_id:
-          type: string
-          format: uuid
-        base_currency:
-          type: string
-          example: USD
-        cash_balance:
-          type: number
-          format: double
-        positions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PortfolioPosition'
-    EventTriggerRequest:
-      type: object
-      description: Generic event trigger used by the game logic service.
-      required:
-        - event_type
-        - payload
-      properties:
-        event_type:
-          type: string
-          enum: [trade_executed, quest_completed, reward_granted]
-        payload:
-          type: object
-          description: Arbitrary JSON payload specific to the event_type.
-    EventTriggerResponse:
-      type: object
-      properties:
-        accepted:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "Event queued"
-security:
-  - BearerAuth: []
 paths:
   /market:
     get:
-      summary: List market assets (summary)
-      operationId: listMarketAssets
+      summary: Get latest market data for all instruments
+      operationId: listMarketData
+      tags:
+        - Market
       parameters:
-        - name: type
+        - name: limit
           in: query
-          description: Filter by asset type
+          description: Maximum number of records to return
           required: false
           schema:
-            type: string
-            enum: [stock, crypto, in-game]
-        - name: search
+            type: integer
+            minimum: 1
+            default: 100
+        - name: offset
           in: query
-          description: Text search on symbol or name
+          description: Number of records to skip (for pagination)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: instrument_id
+          in: query
+          description: Filter by specific instrument (e.g., ticker)
           required: false
           schema:
             type: string
       responses:
         '200':
-          description: Array of market assets
+          description: A list of market data points
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/MarketInfo'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketData'
+                  total:
+                    type: integer
+                    description: Total number of records matching the query
         '400':
           $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /stock/{symbol}:
     get:
-      summary: Get historical candle data for a symbol
-      operationId: getStockCandles
+      summary: Get the latest market data for a specific stock symbol
+      operationId: getStockData
+      tags:
+        - Market
       parameters:
         - name: symbol
           in: path
           required: true
+          description: Stock ticker symbol (instrument_id)
           schema:
             type: string
-          example: AAPL
-        - name: interval
+        - name: latest
           in: query
           required: false
+          description: If true, returns the most recent data point only
           schema:
-            type: string
-            enum: [1m,5m,15m,1h,1d]
-            default: 1m
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 500
-            minimum: 1
-            maximum: 5000
+            type: boolean
+            default: true
       responses:
         '200':
-          description: Candle array
+          description: Market data for the requested symbol
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Candle'
+                $ref: '#/components/schemas/MarketData'
         '404':
-          description: Symbol not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /trade:
     post:
-      summary: Submit a new trade order
-      operationId: createTrade
+      summary: Execute a trade (buy or sell) within a portfolio
+      operationId: executeTrade
+      tags:
+        - Trading
       requestBody:
         required: true
         content:
@@ -269,32 +107,64 @@ paths:
               $ref: '#/components/schemas/TradeRequest'
       responses:
         '201':
-          description: Order accepted
+          description: Trade successfully created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TradeResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Business rule violation (e.g., insufficient funds)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /portfolio:
     get:
-      summary: Retrieve the authenticated user's portfolio
+      summary: Retrieve a player's portfolio overview
       operationId: getPortfolio
+      tags:
+        - Portfolio
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          description: UUID of the player whose portfolio is requested
+          schema:
+            type: string
+            format: uuid
+        - name: portfolio_name
+          in: query
+          required: false
+          description: Filter by portfolio name (if player has multiple)
+          schema:
+            type: string
       responses:
         '200':
-          description: Portfolio details
+          description: Portfolio data including holdings and total value
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PortfolioResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /event/trigger:
     post:
-      summary: Generic event trigger endpoint for game logic
+      summary: Trigger an in‑game event for a player (e.g., event participation, reward claim)
       operationId: triggerEvent
+      tags:
+        - Events
       requestBody:
         required: true
         content:
@@ -302,28 +172,245 @@ paths:
             schema:
               $ref: '#/components/schemas/EventTriggerRequest'
       responses:
-        '202':
-          description: Event queued for processing
+        '200':
+          description: Event processed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventTriggerResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Event cannot be triggered (e.g., already finished)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 components:
+  schemas:
+    MarketData:
+      type: object
+      required:
+        - instrument_id
+        - price
+        - volume
+        - data_timestamp
+      properties:
+        market_data_id:
+          type: integer
+          format: int64
+        instrument_id:
+          type: string
+          example: AAPL
+        price:
+          type: number
+          format: double
+        volume:
+          type: integer
+          format: int64
+        bid_price:
+          type: number
+          format: double
+          nullable: true
+        ask_price:
+          type: number
+          format: double
+          nullable: true
+        data_timestamp:
+          type: string
+          format: date-time
+
+    TradeRequest:
+      type: object
+      required:
+        - portfolio_id
+        - instrument_id
+        - side
+        - quantity
+      properties:
+        portfolio_id:
+          type: string
+          format: uuid
+        instrument_id:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        quantity:
+          type: number
+          format: double
+          minimum: 0.00000001
+        price:
+          type: number
+          format: double
+          description: Optional limit price; if omitted, market price is used
+          nullable: true
+        fee:
+          type: number
+          format: double
+          default: 0
+        market_data_id:
+          type: integer
+          format: int64
+          description: Reference to market_data used for audit
+          nullable: true
+
+    TradeResponse:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        portfolio_id:
+          type: string
+          format: uuid
+        instrument_id:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        quantity:
+          type: number
+          format: double
+        price:
+          type: number
+          format: double
+        executed_at:
+          type: string
+          format: date-time
+        fee:
+          type: number
+          format: double
+        market_data_id:
+          type: integer
+          format: int64
+          nullable: true
+
+    PortfolioResponse:
+      type: object
+      required:
+        - portfolio_id
+        - player_id
+        - name
+        - total_value
+        - holdings
+      properties:
+        portfolio_id:
+          type: string
+          format: uuid
+        player_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        total_value:
+          type: number
+          format: double
+        holdings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Holding'
+
+    Holding:
+      type: object
+      required:
+        - instrument_id
+        - quantity
+        - avg_price
+      properties:
+        instrument_id:
+          type: string
+        quantity:
+          type: number
+          format: double
+        avg_price:
+          type: number
+          format: double
+        last_updated:
+          type: string
+          format: date-time
+
+    EventTriggerRequest:
+      type: object
+      required:
+        - player_id
+        - event_id
+        - action
+      properties:
+        player_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          description: The action the player performs, e.g., "join", "claim_reward"
+          enum: [join, claim_reward]
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Optional extra data for the event
+
+    EventTriggerResponse:
+      type: object
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [joined, reward_claimed, already_claimed, not_allowed]
+        points_earned:
+          type: integer
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error_code:
+          type: string
+        message:
+          type: string
+
   responses:
     BadRequest:
-      description: Bad request – validation error
+      description: Invalid request parameters
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    Unauthorized:
-      description: Authentication required or token invalid/expired
+    NotFound:
+      description: Resource not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
 ```
