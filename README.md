@@ -1,5 +1,9 @@
 # Taiwan Stock Monopoly Game
 
+Primary project reference:
+- [`docs/project_summary.md`](docs/project_summary.md) for the canonical full overview
+- [`docs/project_summary_one_pager.md`](docs/project_summary_one_pager.md) for a fast skim
+
 Welcome to the Taiwan Stock Monopoly Game, a unique blend of **RPG character progression, stock market simulation, entrepreneurship, and high-stakes gambling**. Your ultimate goal is to become the "World's Richest Person" in a dynamic virtual Taiwan.
 
 ## Overall Project Progress / 項目整體進度

@@ -1,0 +1,3 @@
+# Project One-Pager
+
+Taiwan Stock Monopoly Game is a hybrid RPG and stock-market simulation set in a virtual Taiwan economy. Players progress through a compressed timeline where 1 real-world hour equals 1 in-game day, using historical Taiwan market data to trade, borrow, gamble, work, and build wealth across multiple career and lifestyle paths. The MVP centers on a FastAPI backend, PostgreSQL storage, a Next.js frontend, WebSocket-based real-time features, and ETL pipelines that ingest market data from sources such as FinMind and Yahoo Finance. The long-term roadmap expands the game into real estate, entrepreneurship, social influence, politics, succession, and live tournament modes. If you need the full canonical overview, read `docs/project_summary.md`.

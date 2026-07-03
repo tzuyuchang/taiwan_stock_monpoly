@@ -103,3 +103,24 @@ CREATE TABLE IF NOT EXISTS player_stats (
 -- CREATE INDEX idx_bank_loans_player_id ON bank_loans (player_id, is_defaulted);
 -- CREATE INDEX idx_player_assets_player_id ON player_assets (player_id);
 -- CREATE INDEX idx_player_stats_player_id ON player_stats (player_id, stat_name);
+
+-- Raw FinMind price data for bulk historical ingestion
+CREATE TABLE IF NOT EXISTS finmind_taiwan_stock_price (
+    id BIGSERIAL PRIMARY KEY,
+    stock_id VARCHAR(20) NOT NULL,
+    game_date DATE NOT NULL,
+    trading_volume BIGINT,
+    trading_money BIGINT,
+    open_price DECIMAL(12, 4),
+    high_price DECIMAL(12, 4),
+    low_price DECIMAL(12, 4),
+    close_price DECIMAL(12, 4),
+    spread DECIMAL(12, 4),
+    trading_turnover DECIMAL(12, 6),
+    source_name VARCHAR(50) NOT NULL DEFAULT 'TaiwanStockPrice',
+    retrieved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (stock_id, game_date, source_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_finmind_taiwan_stock_price_stock_date
+    ON finmind_taiwan_stock_price (stock_id, game_date);
