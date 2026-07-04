@@ -11,6 +11,8 @@ from sqlalchemy import create_engine, inspect, insert, update, select, MetaData
 from sqlalchemy.orm import Session, sessionmaker
 from dotenv import load_dotenv
 
+from .market_model.runtime import simulate_and_store_market_bar
+
 # --- Setup logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -40,17 +42,20 @@ try:
     player_profile_table = metadata.tables.get("player_profile")
     historical_stock_data_table = metadata.tables.get("historical_stock_data")
     bank_loans_table = metadata.tables.get("bank_loans")
+    finmind_taiwan_stock_price_table = metadata.tables.get("finmind_taiwan_stock_price")
     
     # Check if all necessary tables were found
     if game_state_table is None or \
        player_profile_table is None or \
        historical_stock_data_table is None or \
-       bank_loans_table is None:
+       bank_loans_table is None or \
+       finmind_taiwan_stock_price_table is None:
         missing_tables = []
         if game_state_table is None: missing_tables.append("game_state_table")
         if player_profile_table is None: missing_tables.append("player_profile_table")
         if historical_stock_data_table is None: missing_tables.append("historical_stock_data_table")
         if bank_loans_table is None: missing_tables.append("bank_loans_table")
+        if finmind_taiwan_stock_price_table is None: missing_tables.append("finmind_taiwan_stock_price_table")
         raise ValueError(f"One or more required tables not found: {', '.join(missing_tables)}. Ensure db/init_schema.sql has been run correctly.")
 
 except Exception as e:
@@ -187,10 +192,15 @@ def mark_loan_as_defaulted(db: Session, loan_id: int):
 def get_active_stock_tickers(db: Session):
     """Gets a list of unique stock tickers currently considered active."""
     try:
-        # Assuming historical_stock_data contains all tickers we care about.
         stmt = select(historical_stock_data_table.c.stock_ticker.distinct())
         result = db.execute(stmt).scalars().fetchall()
-        logging.debug(f"Fetched {len(result)} active stock tickers.")
+        if result:
+            logging.debug(f"Fetched {len(result)} active stock tickers from historical_stock_data.")
+            return result
+
+        stmt = select(finmind_taiwan_stock_price_table.c.stock_id.distinct())
+        result = db.execute(stmt).scalars().fetchall()
+        logging.debug(f"Fetched {len(result)} active stock tickers from finmind_taiwan_stock_price.")
         return result if result else []
     except Exception as e:
         logging.error(f"Error fetching active stock tickers: {e}")
@@ -210,10 +220,14 @@ def get_todays_stock_data(db: Session, ticker: str, game_date: date):
             # Convert SQLAlchemy Row to dictionary
             return dict(result._mapping)
         else:
+            simulated = simulate_and_store_market_bar(db, stock_id=ticker, game_date=game_date)
+            if simulated:
+                logging.info(f"Generated simulated market data for {ticker} on {game_date}.")
+                return simulated
             logging.warning(f"No historical data found for {ticker} on {game_date}. Returning mock data.")
-            # Fallback to mock data if specific day's data isn't found
-            # This fallback should ideally not be hit if dummy data generation is comprehensive
             return {
+                "stock_ticker": ticker,
+                "game_date": game_date,
                 "open_price": round(random.uniform(50, 500), 2),
                 "close_price": round(random.uniform(50, 500), 2),
                 "high_price": round(random.uniform(50, 500), 2),

@@ -7,7 +7,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text # Import text for potential raw SQL queries if needed
 
@@ -17,7 +17,26 @@ from sqlalchemy import text # Import text for potential raw SQL queries if neede
 # but it's better practice to have it in a separate database utility file.
 # --- DB Setup Placeholder ---
 # In a real project, you'd import this from e.g., database.py
-from core.time_engine import get_db_session, start_time_engine_scheduler, stop_time_engine_scheduler
+from .core.time_engine import get_db_session, start_time_engine_scheduler, stop_time_engine_scheduler
+# Market simulation foundation
+from .core.market_model.service import get_market_simulation_summary
+from .core.gameplay import (
+    PlayerCreateRequest,
+    WorkActionRequest,
+    GambleActionRequest,
+    TradeActionRequest,
+    create_player,
+    get_player_snapshot,
+    get_player_portfolio,
+    list_players,
+    advance_one_day,
+    finish_day,
+    perform_work,
+    perform_gamble,
+    buy_stock,
+    sell_stock,
+    list_player_positions,
+)
 # --- End DB Setup Placeholder ---
 
 # --- Load environment variables ---
@@ -33,15 +52,15 @@ async def lifespan(app: FastAPI):
     # to the scheduler to create sessions.
     app.state.db_session_maker = get_db_session # Make the session provider available
     
-    # Start the time engine scheduler background task
-    await start_time_engine_scheduler(app.state, app.state.db_session_maker)
-    
-    print("FastAPI app lifespan: Time Engine Scheduler started.")
+    if os.getenv("ENABLE_TIME_ENGINE_SCHEDULER", "false").lower() == "true":
+        await start_time_engine_scheduler(app.state, app.state.db_session_maker)
+        print("FastAPI app lifespan: Time Engine Scheduler started.")
     yield
     # --- Shutdown ---
-    # Stop the time engine scheduler task gracefully
-    await stop_time_engine_scheduler(app.state)
-    print("FastAPI app lifespan: Time Engine Scheduler stopped.")
+    if os.getenv("ENABLE_TIME_ENGINE_SCHEDULER", "false").lower() == "true":
+        # Stop the time engine scheduler task gracefully
+        await stop_time_engine_scheduler(app.state)
+        print("FastAPI app lifespan: Time Engine Scheduler stopped.")
 
 # --- Initialize FastAPI App ---
 app = FastAPI(
@@ -65,7 +84,7 @@ async def get_game_date_endpoint(db: Session = Depends(get_db_session)):
     try:
         # Fetch current game date using the function from time_engine
         # Note: Ensure get_current_game_date correctly uses the provided 'db' session
-        from core.time_engine import get_current_game_date # Import specifically for this function if needed
+        from .core.time_engine import get_current_game_date # Import specifically for this function if needed
         
         current_date = get_current_game_date(db) 
         if current_date:
@@ -76,11 +95,69 @@ async def get_game_date_endpoint(db: Session = Depends(get_db_session)):
         logging.error(f"Error in /game-date endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
-# --- Placeholder for other API endpoints ---
-# Example: Player creation, stock market data, gambling endpoints would go here.
-# @app.post("/player/create")
-# async def create_player(...):
-#     pass
+
+@app.get("/market-simulation/summary")
+async def get_market_simulation_summary_endpoint(db: Session = Depends(get_db_session)):
+    """Returns a minimal market-data and universe summary for the simulation layer."""
+    try:
+        return get_market_simulation_summary(db)
+    except Exception as e:
+        logging.error(f"Error in /market-simulation/summary endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+@app.post("/players")
+async def create_player_endpoint(payload: PlayerCreateRequest, db: Session = Depends(get_db_session)):
+    return create_player(db, payload)
+
+
+@app.get("/players")
+async def list_players_endpoint(db: Session = Depends(get_db_session)):
+    return list_players(db)
+
+
+@app.get("/players/{player_id}")
+async def get_player_endpoint(player_id: int, db: Session = Depends(get_db_session)):
+    return get_player_snapshot(db, player_id)
+
+
+@app.get("/players/{player_id}/portfolio")
+async def get_player_portfolio_endpoint(player_id: int, db: Session = Depends(get_db_session)):
+    return get_player_portfolio(db, player_id)
+
+
+@app.post("/days/advance")
+async def advance_day_endpoint(db: Session = Depends(get_db_session)):
+    return advance_one_day(db)
+
+
+@app.post("/days/finish")
+async def finish_day_endpoint(player_id: int, db: Session = Depends(get_db_session)):
+    return finish_day(db, player_id)
+
+
+@app.post("/actions/work")
+async def work_action_endpoint(payload: WorkActionRequest, db: Session = Depends(get_db_session)):
+    return perform_work(db, payload)
+
+
+@app.post("/actions/gamble")
+async def gamble_action_endpoint(payload: GambleActionRequest, db: Session = Depends(get_db_session)):
+    return perform_gamble(db, payload)
+
+
+@app.post("/trade/buy")
+async def buy_stock_endpoint(payload: TradeActionRequest, db: Session = Depends(get_db_session)):
+    return buy_stock(db, payload)
+
+
+@app.post("/trade/sell")
+async def sell_stock_endpoint(payload: TradeActionRequest, db: Session = Depends(get_db_session)):
+    return sell_stock(db, payload)
+
+
+@app.get("/trade")
+async def trade_overview_endpoint(player_id: int | None = None, db: Session = Depends(get_db_session)):
+    return list_player_positions(db, player_id)
 
 # --- Running the app (for local development) ---
 # This block allows running the app directly using `python backend/app.py`

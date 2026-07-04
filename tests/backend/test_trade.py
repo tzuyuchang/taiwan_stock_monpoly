@@ -1,11 +1,17 @@
-import pytest
-from fastapi.testclient import TestClient
+import asyncio
+
+import httpx
+
 from backend.app import app
 
-client = TestClient(app)
 
 def test_trade_endpoint():
-    response = client.get("/trade")
+    async def _request():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/trade")
+
+    response = asyncio.run(_request())
+
     assert response.status_code == 200
-    # Expect a JSON list (could be empty)
     assert isinstance(response.json(), list)

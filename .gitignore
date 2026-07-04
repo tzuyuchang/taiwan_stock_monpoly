@@ -26,3 +26,4 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+data/market_features_full.csv
